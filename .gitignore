@@ -1,7 +1,11 @@
 __pycache__/
 .DS_Store
 .huskyrc.json
-out
+third_party/pytorch_models/
+.idea/
+/**/__pycache__/
+/**/.DS_Store
+.vscode/
 log.log
 **/node_modules
 *.pyc
