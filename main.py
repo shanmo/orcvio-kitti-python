@@ -204,7 +204,7 @@ if __name__ == '__main__':
         kitti_end_index = 1100
     PG = mytest.kitti.path_def.PathGenerator(kitti_date, kitti_drive)
     IP = sem.sem_img_proc.SemImageProcessor(kitti_camK, (dataset.cam.width, dataset.cam.height), kitti_end_index-1, PG, load_detection_flag)
-    FTV = mytest.visualization.FeatureTrackingVis(dataset.cam.width, dataset.cam.height)
+    FTV = mytest.visualization.FeatureTrackingVis()
 
     durations = []
     for i in range(len(dataset)):
@@ -226,6 +226,7 @@ if __name__ == '__main__':
 
         # process object features 
         feat_obs_published = IP.img_callback(sem.message.img_msg(frame.image, i))
+        sptam.current.image = FTV.plot_all(frame.image, IP.bbox_trackers, IP.my_tracker.kps_tracker, i)
 
         duration = time.time() - time_start
         durations.append(duration)
