@@ -7,15 +7,17 @@ from threading import Thread
 
 from slam.components import Camera
 from slam.components import StereoFrame
-from slam.feature import ImageFeature
-from slam.params import ParamsKITTI, ParamsEuroc
-from slam.dataset import KITTIOdometry, EuRoCDataset
-
 from slam.components import Measurement
+from slam.feature import ImageFeature
+from slam.params import ParamsKITTI
+from slam.dataset import KITTIOdometry
 from slam.covisibility import CovisibilityGraph
 from slam.mapping import MappingThread
 from slam.motion import MotionModel
 from slam.tracking import Tracking
+
+import sem.sem_img_proc
+import mytest.kitti.path_def
 
 import g2o
 
@@ -164,26 +166,16 @@ class SPTAM(object):
     def adding_keyframes_stopped(self):
         return self.status['adding_keyframes_stopped']
 
-
-
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--no-viz', action='store_true', help='do not visualize')
-    parser.add_argument('--dataset', type=str, help='dataset (KITTI/EuRoC)', 
-        default='KITTI')
-    parser.add_argument('--path', type=str, help='dataset path', 
-        default='/mnt/disk2/kitti/Kitti_all_data/odometry/dataset/sequences/06')
+    parser.add_argument('--odom', type=str, help='odom idx', 
+        default="06")
     args = parser.parse_args()
 
-    if args.dataset.lower() == 'kitti':
-        params = ParamsKITTI()
-        dataset = KITTIOdometry(args.path)
-    elif args.dataset.lower() == 'euroc':
-        params = ParamsEuroc()
-        dataset = EuRoCDataset(args.path)
-
+    params = ParamsKITTI()
+    odom_path = "/mnt/disk2/kitti/Kitti_all_data/odometry/dataset/sequences/"
+    dataset = KITTIOdometry(odom_path+args.odom)
     sptam = SPTAM(params)
 
     visualize = not args.no_viz
@@ -191,14 +183,25 @@ if __name__ == '__main__':
         from viewer import MapViewer
         viewer = MapViewer(sptam, params)
 
-
     cam = Camera(
         dataset.cam.fx, dataset.cam.fy, dataset.cam.cx, dataset.cam.cy, 
         dataset.cam.width, dataset.cam.height, 
         params.frustum_near, params.frustum_far, 
         dataset.cam.baseline)
 
-
+    # front end 
+    load_detection_flag = False 
+    kitti_camK = np.eye(3)
+    kitti_camK[0, 0] = dataset.cam.fx
+    kitti_camK[1, 1] = dataset.cam.fy
+    kitti_camK[0, 2] = dataset.cam.cx
+    kitti_camK[1, 2] = dataset.cam.cy
+    if args.odom == "06": 
+        kitti_date = "2011_09_30"
+        kitti_drive = "0020"
+        kitti_end_index = 1100
+    PG = mytest.kitti.path_def.PathGenerator(kitti_date, kitti_drive)
+    IP = sem.sem_img_proc.SemImageProcessor(kitti_camK, kitti_end_index-1, PG, load_detection_flag)
 
     durations = []
     # for i in range(len(dataset))[:100]:

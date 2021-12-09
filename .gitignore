@@ -1,7 +1,9 @@
+mytest/cache/
+third_party/pytorch_models/
+
 __pycache__/
 .DS_Store
 .huskyrc.json
-third_party/pytorch_models/
 .idea/
 /**/__pycache__/
 /**/.DS_Store
