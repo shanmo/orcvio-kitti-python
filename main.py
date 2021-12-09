@@ -18,8 +18,8 @@ from slam.tracking import Tracking
 
 import sem.sem_img_proc
 import sem.message
-import mytest.kitti.path_def
 import sem.visualization
+import mytest.kitti.path_def
 
 import g2o
 
@@ -204,7 +204,7 @@ if __name__ == '__main__':
         kitti_end_index = 1100
     PG = mytest.kitti.path_def.PathGenerator(kitti_date, kitti_drive)
     IP = sem.sem_img_proc.SemImageProcessor(kitti_camK, (dataset.cam.width, dataset.cam.height), kitti_end_index-1, PG, load_detection_flag)
-    FTV = mytest.visualization.FeatureTrackingVis()
+    FTV = sem.visualization.FeatureTrackingVis()
 
     durations = []
     for i in range(len(dataset)):
