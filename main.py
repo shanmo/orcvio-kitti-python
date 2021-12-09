@@ -17,6 +17,7 @@ from slam.motion import MotionModel
 from slam.tracking import Tracking
 
 import sem.sem_img_proc
+import sem.message
 import mytest.kitti.path_def
 
 import g2o
@@ -204,19 +205,18 @@ if __name__ == '__main__':
     IP = sem.sem_img_proc.SemImageProcessor(kitti_camK, (dataset.cam.width, dataset.cam.height), kitti_end_index-1, PG, load_detection_flag)
 
     durations = []
-    # for i in range(len(dataset))[:100]:
     for i in range(len(dataset)):
         featurel = ImageFeature(dataset.left[i], params)
         featurer = ImageFeature(dataset.right[i], params)
         timestamp = dataset.timestamps[i]
 
         time_start = time.time()  
-
         t = Thread(target=featurer.extract)
         t.start()
         featurel.extract()
         t.join()
         
+        feat_obs_published = IP.img_callback(sem.message.img_msg(dataset.left[i], i))
         frame = StereoFrame(i, g2o.Isometry3d(), featurel, featurer, cam, timestamp=timestamp)
 
         if not sptam.is_initialized():

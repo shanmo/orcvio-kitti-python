@@ -6,12 +6,14 @@ import torch
 from collections import defaultdict
 import pickle 
 import numpy as np 
+import random
 
 import sem.base_img_proc
 import sem.object_tracker
 import third_party.yolov3.obj_detection
 import third_party.yolov3.utils
 import third_party.yolov3.darknet
+import third_party.starmap.kp_detection
 
 def load_yolo_model(yolo_path, yolo_weights_path):
     yolo_model = third_party.yolov3.darknet.Darknet(yolo_path + 'cfg/yolov3.cfg')
@@ -89,7 +91,7 @@ def convert_kp_to_cv_kp(kps):
     """
     cv_kps = []
     for kp in kps:
-        cv_kps.append(cv2.KeyPoint(kp[0], kp[1], 5, _class_id=0))
+        cv_kps.append(cv2.KeyPoint(kp[0], kp[1], 5, class_id=0))
     return cv_kps
 
 def load_detection_starmap(img_id, base_starmap_results_path):
@@ -220,7 +222,7 @@ def detect_semantic_kps(img_original, starmap_model, bbox_trackers, load_detecti
             # note x, y order
             ps_list[k][1] += int(x1)
             ps_list[k][0] += int(y1)
-            kp = cv2.KeyPoint(ps_list[k][1], ps_list[k][0], 5, _class_id=0)
+            kp = cv2.KeyPoint(ps_list[k][1], ps_list[k][0], 5, class_id=0)
             kps_all.append(kp)
             bbox_id_all.append(bbox_track_id)
 
@@ -300,3 +302,54 @@ class SemImageProcessor(sem.base_img_proc.ImageProcessor):
         self.R_starmap_all_dict[self.img_id] = R_starmap_all_dict
         # track sem kps
         self.my_tracker.kps_tracker.update(self.bbox_trackers, sem_kp_object_ids, semantic_kps, kp_labels, self.img_id)
+
+    def publish_features(self):
+        """
+        publish features that are lost
+        """
+        # observations to be published
+        obs_publish_dict = {}
+        # publish lost object features
+        for object_id, bbox_tracker in self.my_tracker.bbox_tracker.lost_trackers_dict.items():
+            # python does not support duplicated keys
+            # this is a workaround
+            object_dict_id = object_id
+            if object_id in self.obs_all_dict:
+                object_dict_id = object_id + random.randint(1, 1000)
+            self.obs_all_dict[object_dict_id] = {}
+            obs_type = 'object'
+            img_id_list = []
+            zs = np.zeros((0, 12, 2))
+            zb = np.zeros((0, 4))
+            R0 = np.zeros((0, 3, 3))
+            self.obs_all_dict[object_dict_id] = {'type': obs_type, 'img_id': img_id_list, 'zs': zs, 'zb': zb, 'R0': R0}
+            for img_id, bbox in bbox_tracker.history.items():
+                # we do not have a valid detection when there is no starmap rotation
+                if object_id not in self.R_starmap_all_dict[img_id]:
+                    pass
+                else:
+                    self.add_img_id_to_obs_dict(object_dict_id, img_id)
+                    bbox = sem.base_img_proc.normalize_bbox(self.K, bbox)
+                    self.add_zb_to_obs_dict(object_dict_id, bbox)
+
+            # we may not have valid keypoints detection for a bbox
+            if object_id not in self.my_tracker.kps_tracker.trackers:
+                continue
+            else:
+                kp_tracker = self.my_tracker.kps_tracker.trackers[object_id]
+
+            for img_id, all_kps in kp_tracker.history.items():
+                # we do not have a valid detection when there is no starmap rotation
+                if object_id not in self.R_starmap_all_dict[img_id]:
+                    pass
+                else:
+                    zs = sem.base_img_proc.normalize_pixel(self.K, all_kps)
+                    self.add_zs_to_obs_dict(object_dict_id, zs)
+                    R_starmap = self.R_starmap_all_dict[img_id][object_id]
+                    self.add_R0_to_obs_dict(object_dict_id, R_starmap)
+
+            obs_publish_dict[object_dict_id] = self.obs_all_dict[object_dict_id]
+
+        # reset track to del
+        self.my_tracker.bbox_tracker.lost_trackers_dict = {}
+        return obs_publish_dict

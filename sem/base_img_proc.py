@@ -135,10 +135,18 @@ def normalize_pixel(K, raw_pixel):
     :param raw_pixel: size nx2 or nxmx2, array that contains all coordinates
     :return: size nx2 or nxmx2, tuple that contains all normalized coordinates
     """
-
     # K[[0, 1], [2, 2]] means K[0, 2], K[1, 2], ie cx, cy
     # K[[0, 1], [0, 1]] refers K[0, 0], K[1, 1], ie fx, fy
-
     normalized_pixel = (raw_pixel - K[[0, 1], [2, 2]]) / K[[0, 1], [0, 1]]
-
     return normalized_pixel
+
+def normalize_bbox(K, bbox_xyxy_unnormalized):
+    """
+    :param bbox_xyxy_unnormalized: size nx4, bbox is in xyxy unnormalized format
+    :param K: size 3x3, instrinsics
+    :return: bbox_xyxy_normalized: size nx4, normalized bbox
+    """
+    # normalize bbox
+    bbox_xyxy_normalized = (bbox_xyxy_unnormalized - K[[0, 1, 0, 1], [2, 2, 2, 2]]) / \
+         (K[[0, 1, 0, 1], [0, 1, 0, 1]])
+    return bbox_xyxy_normalized

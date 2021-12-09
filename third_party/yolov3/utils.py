@@ -25,9 +25,11 @@ bbox_thresh_max = 1e3
 ratio_thresh = 0.8
 
 def write(x, classes, img):
-    c1 = tuple(x[1:3].int())
-    c2 = tuple(x[3:5].int())
-    cls = int(x[-1])
+    x = x.detach().cpu().clone().numpy()
+    x = [int(ele) for ele in x]
+    c1 = tuple(x[1:3])
+    c2 = tuple(x[3:5])
+    cls = x[-1]
     # color = random.choice(colors)
     """use green for car"""
     color = (0, 255, 0)
@@ -65,7 +67,7 @@ def output_to_car_bbox(output, classes, img):
         if object_class == CAR_CLASS:
             bbox_img = write(detection, classes, img)
             # convert tensor to array
-            bbox = np.array(detection[1:5])
+            bbox = detection[1:5].detach().cpu().clone().numpy()
             """
             bbox is x1y1x2y2 format 
             """
