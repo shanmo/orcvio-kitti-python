@@ -1,8 +1,6 @@
 import numpy as np 
 import g2o
 
-
-
 class MotionModel(object):
     def __init__(self, 
             timestamp=None, 

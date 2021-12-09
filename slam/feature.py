@@ -3,11 +3,7 @@ import cv2
 
 from collections import defaultdict
 from numbers import Number
-
 from threading import Thread, Lock 
-from queue import Queue
-
-
 
 class ImageFeature(object):
     def __init__(self, image, params):

@@ -2,12 +2,20 @@ import numpy as np
 import time
 from collections import defaultdict
 import transforms3d as tf 
+import argparse
+from threading import Thread
 
-from components import Measurement
-from covisibility import CovisibilityGraph
-from mapping import MappingThread
-from motion import MotionModel
-from tracking import Tracking
+from slam.components import Camera
+from slam.components import StereoFrame
+from slam.feature import ImageFeature
+from slam.params import ParamsKITTI, ParamsEuroc
+from slam.dataset import KITTIOdometry, EuRoCDataset
+
+from slam.components import Measurement
+from slam.covisibility import CovisibilityGraph
+from slam.mapping import MappingThread
+from slam.motion import MotionModel
+from slam.tracking import Tracking
 
 import g2o
 
@@ -161,21 +169,6 @@ class SPTAM(object):
 
 
 if __name__ == '__main__':
-    import cv2
-
-    import os
-    import sys
-    import argparse
-
-    from threading import Thread
-    
-    from components import Camera
-    from components import StereoFrame
-    from feature import ImageFeature
-    from params import ParamsKITTI, ParamsEuroc
-    from dataset import KITTIOdometry, EuRoCDataset
-    
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--no-viz', action='store_true', help='do not visualize')
     parser.add_argument('--dataset', type=str, help='dataset (KITTI/EuRoC)', 

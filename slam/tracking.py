@@ -1,9 +1,9 @@
 import cv2
 import numpy as np
 import transforms3d as tf 
-
 import g2o
-from optimization import BundleAdjustment
+
+from slam.optimization import BundleAdjustment
 
 class Tracking(object):
     def __init__(self, params):

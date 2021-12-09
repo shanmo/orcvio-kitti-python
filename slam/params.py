@@ -1,7 +1,5 @@
 import cv2
 
-
-
 class Params(object):
     def __init__(self):
         

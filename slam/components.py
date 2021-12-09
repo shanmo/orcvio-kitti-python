@@ -8,12 +8,9 @@ from queue import Queue
 from enum import Enum
 from collections import defaultdict
 
-from covisibility import GraphKeyFrame
-from covisibility import GraphMapPoint
-from covisibility import GraphMeasurement
-
-
-
+from slam.covisibility import GraphKeyFrame
+from slam.covisibility import GraphMapPoint
+from slam.covisibility import GraphMeasurement
 
 class Camera(object):
     def __init__(self, fx, fy, cx, cy, width, height, 

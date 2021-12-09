@@ -3,12 +3,11 @@ import numpy as np
 from queue import Queue
 from threading import Thread, Lock, Condition
 import time
-
 from itertools import chain
 from collections import defaultdict
 
-from components import Measurement
-from optimization import LocalBA
+from slam.components import Measurement
+from slam.optimization import LocalBA
 
 class Mapping(object):
     def __init__(self, graph, params):

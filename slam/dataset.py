@@ -4,11 +4,7 @@ import os
 import time
 
 from collections import defaultdict, namedtuple
-
 from threading import Thread, Lock
-from multiprocessing import Process, Queue
-
-
 
 class ImageReader(object):
     def __init__(self, ids, timestamps, cam=None):
