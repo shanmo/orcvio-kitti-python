@@ -201,7 +201,7 @@ if __name__ == '__main__':
         kitti_drive = "0020"
         kitti_end_index = 1100
     PG = mytest.kitti.path_def.PathGenerator(kitti_date, kitti_drive)
-    IP = sem.sem_img_proc.SemImageProcessor(kitti_camK, kitti_end_index-1, PG, load_detection_flag)
+    IP = sem.sem_img_proc.SemImageProcessor(kitti_camK, (dataset.cam.width, dataset.cam.height), kitti_end_index-1, PG, load_detection_flag)
 
     durations = []
     # for i in range(len(dataset))[:100]:
