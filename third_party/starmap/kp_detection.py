@@ -1,12 +1,6 @@
 import torch
 import cv2
 import numpy as np
-from copy import deepcopy
-
-import matplotlib as mpl
-mpl.use('TkAgg')  # or whatever other backend that you want
-import matplotlib.pyplot as plt
-from matplotlib.patches import Ellipse
 
 import math
 import torch.nn as nn

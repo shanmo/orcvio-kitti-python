@@ -182,7 +182,7 @@ if __name__ == '__main__':
 
     visualize = not args.no_viz
     if visualize:
-        from viewer import MapViewer
+        from slam.viewer import MapViewer
         viewer = MapViewer(sptam, params)
 
     cam = Camera(

@@ -21,9 +21,11 @@ class FeatureTrackingVis():
         up = int(bbox_det[1])
         right = int(bbox_det[2])
         down = int(bbox_det[3])
-        self.colours[int(bbox_det[4]) % 32, :]
-        thickness = 2
+        color = self.colours[int(bbox_det[4]) % 32, :] * 255
+        thickness = 5
         image_bgr = cv2.rectangle(image_bgr, (left, up), (right, down), color, thickness) 
+        image_bgr = cv2.putText(image_bgr, "ID: " + f'{int(bbox_det[4])}', (left, up), cv2.FONT_HERSHEY_SIMPLEX, 
+                   2, color, thickness, cv2.LINE_AA)
         return image_bgr
 
     def plot_bbox(self, bbox_trackers, image_bgr, img_id):

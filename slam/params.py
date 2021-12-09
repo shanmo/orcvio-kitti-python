@@ -64,8 +64,8 @@ class ParamsKITTI(Params):
         self.lc_distance_threshold = 15
         self.lc_embedding_distance = 20.0
 
-        self.view_image_width = 400
-        self.view_image_height = 130
+        self.view_image_width = 640
+        self.view_image_height = 320
         self.view_camera_width = 0.75
         self.view_viewpoint_x = 0
         self.view_viewpoint_y = -500   # -10
