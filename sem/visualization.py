@@ -54,8 +54,8 @@ class FeatureTrackingVis():
                 if (x + y) == 0:
                     continue
 
-                thickness = 1
-                image_bgr = cv2.circle(image_bgr, (int(x), int(y)), 3, self.colours[part_id]*255, thickness)
+                thickness = -1
+                image_bgr = cv2.circle(image_bgr, (int(x), int(y)), 1, self.colours[part_id]*255, thickness)
 
                 # connect cur kp to next kp
                 if part_id in old_points:
@@ -69,8 +69,8 @@ class FeatureTrackingVis():
         for part_id in old_points:
             kp_2d = old_points[part_id]
             # mark the newest kp detection
-            thickness = 1
-            image_bgr = cv2.circle(image_bgr, (int(kp_2d[0]), int(kp_2d[1])), 5, self.colours[part_id]*255, thickness)
+            thickness = -1
+            image_bgr = cv2.circle(image_bgr, (int(kp_2d[0]), int(kp_2d[1])), 10, self.colours[part_id]*255, thickness)
 
         return image_bgr
 
