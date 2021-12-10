@@ -45,8 +45,8 @@ class ObjectFeature():
                 obs_ids_to_remove.append(i)
                 continue
 
-            wPo = cam_pose.position
-            wRo = cam_pose.orientation
+            wPo = cam_pose.position()
+            wRo = cam_pose.orientation()
 
             oTw = sem.se3.SE3(wRo, wPo).inverse().matrix()
 
@@ -135,12 +135,12 @@ class ObjectFeature():
         # define addition
         # for updating wTq, v, deformation
         # use right perturbation 
-        addh = lambda x, dx: np.array([x[0] @ sem.se3.axangle2pose(dx[:6]), x[1] + dx[6:9], x[2] + np.reshape(dx[9:], (-1, 3))])
+        addh = lambda x, dx: [x[0] @ sem.se3.axangle2pose(dx[:6]), x[1] + dx[6:9], x[2] + np.reshape(dx[9:], (-1, 3))]
 
         # note the object state is
         # lm input: wTq, v, deformation initialized by zeros
         # in that order!
-        xhat = np.array([self.my_object.wTq.matrix(), self.my_object.v, np.zeros((sem.myobject.NUM_KEYPOINTS, 3))])
+        xhat = [self.my_object.wTq.matrix(), self.my_object.v, np.zeros((sem.myobject.NUM_KEYPOINTS, 3))]
 
         # for testing in simulation
         lm_config = LMConfig()

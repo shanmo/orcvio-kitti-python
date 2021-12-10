@@ -95,11 +95,6 @@ class MapViewer(object):
                 points.append(m.mappoint.position) 
         self.q_active.put(points)
 
-        objects = []
-        for obj in self.system.object_level_map: 
-            pass 
-        self.q_objects.put(objects)
-
         lines = []
         for kf in self.system.graph.keyframes():
             if kf.reference_keyframe is not None:
@@ -110,7 +105,12 @@ class MapViewer(object):
                 lines.append(([*kf.position, *kf.loop_keyframe.position], 2))
         self.q_graph.put(lines)
 
-        
+        objects = []
+        for feat_id, feature in self.system.object_level_map.items(): 
+            objects.append(feature.my_object) 
+        if len(objects) > 0:
+            self.q_objects.put(objects)
+
         if refresh:
             print('****************************************************************', 'refresh')
             cameras = []
@@ -144,7 +144,6 @@ class MapViewer(object):
             if len(points) > 0:
                 self.q_points.put((points, 1))
                 self.q_colors.put((colors, 1))
-
 
     def stop(self):
         self.update(refresh=True)
@@ -275,6 +274,17 @@ class MapViewer(object):
                 gl.glVertex3d(pose[0, 3], pose[1, 3], pose[2, 3])
                 gl.glEnd()
 
+            # show objects 
+            if not self.q_objects.empty(): 
+                poses = []
+                sizes = np.zeros((0, 3))
+                object_list = self.q_objects.get()
+                for obj in object_list:
+                    poses.append(obj.wTq.matrix())
+                    sizes = np.vstack((sizes, np.reshape(obj.v, (-1, 3))))
+                gl.glLineWidth(1)
+                gl.glColor3f(1.0, 0.0, 1.0)
+                pangolin.DrawBoxes(poses, sizes)
 
             # Show mappoints
             if not self.q_points.empty():
