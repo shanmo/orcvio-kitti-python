@@ -231,6 +231,8 @@ class MapViewer(object):
         colors = DynamicArray(shape=(3,))
         cameras = DynamicArray(shape=(4, 4))
 
+        object_poses = DynamicArray(shape=(4,4))
+        object_sizes = DynamicArray(shape=(3,))
 
         while not pangolin.ShouldQuit():
 
@@ -277,14 +279,18 @@ class MapViewer(object):
             # show objects 
             if not self.q_objects.empty(): 
                 poses = []
-                sizes = np.zeros((0, 3))
+                sizes = []
                 object_list = self.q_objects.get()
                 for obj in object_list:
                     poses.append(obj.wTq.matrix())
-                    sizes = np.vstack((sizes, np.reshape(obj.v, (-1, 3))))
-                gl.glLineWidth(1)
-                gl.glColor3f(1.0, 0.0, 1.0)
-                pangolin.DrawBoxes(poses, sizes)
+                    v = np.copy(obj.v)
+                    v[1], v[2] = v[2], v[1]
+                    sizes.append(v)
+                object_poses.extend(poses)
+                object_sizes.extend(sizes)
+            gl.glLineWidth(3)
+            gl.glColor3f(1.0, 0.0, 1.0)
+            pangolin.DrawBoxes(object_poses.array(), object_sizes.array())
 
             # Show mappoints
             if not self.q_points.empty():
