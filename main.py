@@ -19,6 +19,7 @@ from slam.tracking import Tracking
 import sem.sem_img_proc
 import sem.message
 import sem.visualization
+import sem.feature_processor
 import mytest.kitti.path_def
 
 import g2o
@@ -36,7 +37,9 @@ class SPTAM(object):
         self.preceding = None        # last keyframe
         self.current = None          # current frame
         self.status = defaultdict(bool)
-        
+
+        self.object_level_map = None 
+
     def stop(self):
         self.mapping.stop()
 
@@ -170,9 +173,11 @@ class SPTAM(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--no-viz', action='store_true', help='do not visualize')
+    parser.add_argument('--no_viz', action='store_true', help='do not visualize')
     parser.add_argument('--odom', type=str, help='odom idx', 
         default="06")
+    parser.add_argument('--load_det', type=str, help='whether to load saved front end detections', 
+        default="True")
     args = parser.parse_args()
 
     params = ParamsKITTI()
@@ -192,19 +197,15 @@ if __name__ == '__main__':
         dataset.cam.baseline)
 
     # front end 
-    load_detection_flag = False 
-    kitti_camK = np.eye(3)
-    kitti_camK[0, 0] = dataset.cam.fx
-    kitti_camK[1, 1] = dataset.cam.fy
-    kitti_camK[0, 2] = dataset.cam.cx
-    kitti_camK[1, 2] = dataset.cam.cy
+    load_detection_flag = args.load_det 
     if args.odom == "06": 
         kitti_date = "2011_09_30"
         kitti_drive = "0020"
         kitti_end_index = 1100
     PG = mytest.kitti.path_def.PathGenerator(kitti_date, kitti_drive)
-    IP = sem.sem_img_proc.SemImageProcessor(kitti_camK, (dataset.cam.width, dataset.cam.height), kitti_end_index-1, PG, load_detection_flag)
+    IP = sem.sem_img_proc.SemImageProcessor(dataset.cam, (dataset.cam.width, dataset.cam.height), kitti_end_index-1, PG, load_detection_flag)
     FTV = sem.visualization.FeatureTrackingVis()
+    OFP = sem.feature_processor.ObjectFeatProcessor()
 
     durations = []
     for i in range(len(dataset)):
@@ -227,6 +228,9 @@ if __name__ == '__main__':
         # process object features 
         feat_obs_published = IP.img_callback(sem.message.img_msg(frame.image, i))
         sptam.current.image = FTV.plot_all(frame.image, IP.bbox_trackers, IP.my_tracker.kps_tracker, i)
+        OFP.add_cam_poses(frame.pose, i)
+        OFP.feature_callback(feat_obs_published)
+        sptam.object_level_map = OFP.map_server
 
         duration = time.time() - time_start
         durations.append(duration)

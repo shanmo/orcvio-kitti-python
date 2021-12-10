@@ -61,7 +61,7 @@ class Tracking(object):
         #     image_points, camera_matrix, dist_coeffs,
         #     flags=cv2.SOLVEPNP_ITERATIVE)
 
-        if inliers is None or len(inliers) < 200: 
+        if inliers is None or len(inliers) < 300: 
             success_flag = False
             return success_flag, pose 
         print(f"PnP ransac inliers no.: {len(inliers)}")

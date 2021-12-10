@@ -231,7 +231,12 @@ def detect_semantic_kps(img_original, starmap_model, bbox_trackers, load_detecti
     return bbox_id_all, kps_all, kp_label_all, R_starmap_all_dict
 
 class SemImageProcessor(sem.base_img_proc.ImageProcessor):
-    def __init__(self, K, img_shape, last_img_id, PG, load_detection_flag):
+    def __init__(self, dataset_cam, img_shape, last_img_id, PG, load_detection_flag):
+        K = np.eye(3)
+        K[0, 0] = dataset_cam.fx
+        K[1, 1] = dataset_cam.fy
+        K[0, 2] = dataset_cam.cx
+        K[1, 2] = dataset_cam.cy
         super().__init__(K)
         self.img_shape = img_shape
         # Previous and current images

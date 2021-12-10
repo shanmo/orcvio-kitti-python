@@ -6,29 +6,28 @@ class SE3(object):
     """
     3d rigid transform.
     """
-
     def __init__(self, R, t):
-
         self.R = R
-        self.t = t
+        self.t = np.squeeze(t)
+    
+    def position(self):
+        return self.t 
+    
+    def orientation(self): 
+        return self.R 
 
     def matrix(self):
-
         m = np.eye(4)
         m[:3, :3] = self.R
         m[:3, 3] = self.t
-
         return m
 
     def __mul__(self, T):
-
         R = self.R @ T.R
         t = self.R @ T.t + self.t
-
         return SE3(R, t)
 
     def inverse(self):
-
         return SE3(self.R.T, -self.R.T @ self.t)
 
 def skew(a):

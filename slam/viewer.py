@@ -73,6 +73,7 @@ class MapViewer(object):
         self.q_graph = Queue()
         self.q_camera = Queue()
         self.q_image = Queue()
+        self.q_objects = Queue()
 
         # message queue
         self.q_refresh = Queue()
@@ -93,6 +94,11 @@ class MapViewer(object):
             if m.from_triangulation():
                 points.append(m.mappoint.position) 
         self.q_active.put(points)
+
+        objects = []
+        for obj in self.system.object_level_map: 
+            pass 
+        self.q_objects.put(objects)
 
         lines = []
         for kf in self.system.graph.keyframes():

@@ -12,6 +12,8 @@
 
 ## demo 
 
+- demo is for `odometry 06` 
+- for first time run, set `load_detection_flag = False` since there are no saved detections 
 - `python main.py`
 
 ## references 
