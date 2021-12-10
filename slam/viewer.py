@@ -284,6 +284,7 @@ class MapViewer(object):
                 for obj in object_list:
                     poses.append(obj.wTq.matrix())
                     v = np.copy(obj.v)
+                    # FIXME: why need this for visualization? 
                     v[1], v[2] = v[2], v[1]
                     sizes.append(v)
                 object_poses.extend(poses)

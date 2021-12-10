@@ -15,6 +15,9 @@
 - demo is for `odometry 06` 
 - for first time run, set `load_detection_flag = False` since there are no saved detections 
 - `python main.py`
+- visualization 
+> [video demo for odometry 06](https://youtu.be/763iztZBH0g)
+![demo](assets/demo_06.gif) 
 
 ## references 
 
