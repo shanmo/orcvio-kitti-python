@@ -1,6 +1,7 @@
 import numpy as np
 import transforms3d as t3d
 from scipy.linalg import expm, sinm, cosm
+import warnings
 
 class SE3(object):
     """
@@ -80,58 +81,6 @@ def Jl_operator(omega):
 
     return Jl
 
-def imu_kinametics_local(p, R, v, omega, acc, dt):
-    """
-    update SE3 pose based on imu measurements based on closed form integration 
-    :param p: size 1x3, position before update
-    :param R: size 3x3, rotation before update
-    :param v: size 1x3, velocity before update
-    :param omega: size 1x3, unbiased angular velocity
-    :param acc: size 1x3, unbiased linear acceleration 
-    :param dt: scalar of time difference
-    :return: p_new: size 1x3, updated position
-    R_new: size 3x3, update rotation
-    """
-
-    # update rotation
-    delta_R = axangle2rot(dt*omega)
-    R_new = R @ delta_R
-
-    # Gravity vector in the world frame
-    g = np.array([0., 0., -9.81])
-
-    # update position 
-    Hl = Hl_operator(dt*omega)
-    p_new = p + dt*v + g*((dt**2)/2) + R @ Hl @ acc * (dt**2)
-
-    # update velocity 
-    Jl = Jl_operator(dt*omega)
-    v_new = v + g*dt + R @ Jl @ acc * dt
-
-    return R_new, p_new, v_new
-
-def imu_kinametics(p, R, v, omega, acc, dt):
-    """
-    function to call 
-    closed form propagation using right perturbation 
-    original msckf propagation 
-    """
-
-    # closed form propagation using local frame kinematics
-    R_new, p_new, v_new = imu_kinametics_local(p, R, v, omega, acc, dt)
-
-    return R_new, p_new, v_new
-
-def pose_kinametics(T, x):
-    """
-    update SE3 pose based on se3 element x
-    :param T: size nx4x4, SE3 pose
-    :param x: size nx1x6, se3 element
-    :return: size nx4x4, update pose
-    """
-
-    return T @ axangle2pose(x)
-
 def axangle2pose(x):
     """
     converts se3 element to SE3 in batch
@@ -142,16 +91,16 @@ def axangle2pose(x):
     return twist2pose(axangle2twist(x))
 
 def twist2pose(T):
-  '''
-  converts an n x 4 x 4 twist (se3) matrix to an n x 4 x 4 pose (SE3) matrix 
-  ''' 
-  rotang = np.sqrt(np.sum(T[...,[2,0,1],[1,2,0]]**2,axis=-1)[...,None,None]) # n x 1
-  Tn = np.nan_to_num(T / rotang)
-  Tn2 = Tn@Tn
-  Tn3 = Tn@Tn2
-  eye = np.zeros_like(T)
-  eye[...,[0,1,2,3],[0,1,2,3]] = 1.0
-  return eye + T + (1.0 - np.cos(rotang))*Tn2 + (rotang - np.sin(rotang))*Tn3
+    '''
+    converts an n x 4 x 4 twist (se3) matrix to an n x 4 x 4 pose (SE3) matrix 
+    ''' 
+    rotang = np.sqrt(np.sum(T[...,[2,0,1],[1,2,0]]**2,axis=-1)[...,None,None]) # n x 1
+    Tn = np.nan_to_num(T / rotang)
+    Tn2 = Tn@Tn
+    Tn3 = Tn@Tn2
+    eye = np.zeros_like(T)
+    eye[...,[0,1,2,3],[0,1,2,3]] = 1.0
+    return eye + T + (1.0 - np.cos(rotang))*Tn2 + (rotang - np.sin(rotang))*Tn3
 
 def axangle2twist(x):
     """

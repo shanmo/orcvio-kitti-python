@@ -38,6 +38,7 @@ class SPTAM(object):
         self.current = None          # current frame
         self.status = defaultdict(bool)
 
+        self.object_feature_proc = None 
         self.object_level_map = None 
 
     def stop(self):
@@ -87,6 +88,12 @@ class SPTAM(object):
         
         self.reference = self.graph.get_reference_frame(tracked_map)
         pose = self.tracker.refine_pose(frame.pose, frame.cam, measurements)
+
+        # update pose using object residual 
+        self.object_feature_proc.add_cam_poses(frame.pose, frame.idx)
+        pose = self.object_feature_proc.feature_callback(feat_obs_published)
+        self.object_feature_proc.object_level_map = self.object_feature_proc.map_server
+
         frame.update_pose(pose)
         self.motion_model.update_pose(
             frame.timestamp, frame.pose.position(), frame.pose.orientation())
@@ -206,6 +213,7 @@ if __name__ == '__main__':
     IP = sem.sem_img_proc.SemImageProcessor(dataset.cam, (dataset.cam.width, dataset.cam.height), kitti_end_index-1, PG, load_detection_flag)
     FTV = sem.visualization.FeatureTrackingVis()
     OFP = sem.feature_processor.ObjectFeatProcessor()
+    sptam.object_feature_proc = OFP
 
     durations = []
     for i in range(len(dataset)):
@@ -220,17 +228,15 @@ if __name__ == '__main__':
         t.join()
         
         frame = StereoFrame(i, g2o.Isometry3d(), featurel, featurer, cam, timestamp=timestamp)
-        if not sptam.is_initialized():
-            sptam.initialize(frame)
-        else:
-            sptam.track(frame)
 
         # process object features 
         feat_obs_published = IP.img_callback(sem.message.img_msg(frame.image, i))
         sptam.current.image = FTV.plot_all(frame.image, IP.bbox_trackers, IP.my_tracker.kps_tracker, i)
-        OFP.add_cam_poses(frame.pose, i)
-        OFP.feature_callback(feat_obs_published)
-        sptam.object_level_map = OFP.map_server
+
+        if not sptam.is_initialized():
+            sptam.initialize(frame)
+        else:
+            sptam.track(frame)
 
         duration = time.time() - time_start
         durations.append(duration)
