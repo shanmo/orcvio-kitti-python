@@ -9,6 +9,7 @@
 - `conda install -c conda-forge filterpy`
 - `conda install -c pytorch pytorch`, test with `'1.4.0'`
 - `conda install -c anaconda pandas` 
+- there is a yaml file for dependencies and can run `conda env create -f environment.yml` 
 
 ## demo 
 
@@ -18,6 +19,11 @@
 - visualization 
 > [video demo for odometry 06](https://youtu.be/763iztZBH0g)
 ![demo](assets/demo_06.gif) 
+
+## todo 
+
+- [x] add camera pose update using object residual
+- [ ] compare the camera poses with object update wrt without object update
 
 ## references 
 
