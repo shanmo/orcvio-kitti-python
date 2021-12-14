@@ -62,7 +62,7 @@ class SPTAM(object):
         self.motion_model.update_pose(
             frame.timestamp, frame.position, frame.orientation)
 
-    def track(self, frame):
+    def track(self, frame, feat_obs_published):
         while self.is_paused():
             time.sleep(1e-4)
         self.set_tracking(True)
@@ -88,13 +88,13 @@ class SPTAM(object):
         
         self.reference = self.graph.get_reference_frame(tracked_map)
         pose = self.tracker.refine_pose(frame.pose, frame.cam, measurements)
+        frame.update_pose(pose)
 
         # update pose using object residual 
         self.object_feature_proc.add_cam_poses(frame.pose, frame.idx)
-        pose = self.object_feature_proc.feature_callback(feat_obs_published)
+        self.object_feature_proc.feature_callback(feat_obs_published)
         self.object_feature_proc.object_level_map = self.object_feature_proc.map_server
 
-        frame.update_pose(pose)
         self.motion_model.update_pose(
             frame.timestamp, frame.pose.position(), frame.pose.orientation())
 
@@ -212,8 +212,9 @@ if __name__ == '__main__':
     PG = mytest.kitti.path_def.PathGenerator(kitti_date, kitti_drive)
     IP = sem.sem_img_proc.SemImageProcessor(dataset.cam, (dataset.cam.width, dataset.cam.height), kitti_end_index-1, PG, load_detection_flag)
     FTV = sem.visualization.FeatureTrackingVis()
-    OFP = sem.feature_processor.ObjectFeatProcessor()
+    OFP = sem.feature_processor.ObjectFeatProcessor(dataset.cam)
     sptam.object_feature_proc = OFP
+    sptam.object_level_map = OFP.map_server
 
     durations = []
     for i in range(len(dataset)):
@@ -231,12 +232,13 @@ if __name__ == '__main__':
 
         # process object features 
         feat_obs_published = IP.img_callback(sem.message.img_msg(frame.image, i))
-        sptam.current.image = FTV.plot_all(frame.image, IP.bbox_trackers, IP.my_tracker.kps_tracker, i)
 
         if not sptam.is_initialized():
             sptam.initialize(frame)
         else:
-            sptam.track(frame)
+            sptam.track(frame, feat_obs_published)
+
+        sptam.current.image = FTV.plot_all(frame.image, IP.bbox_trackers, IP.my_tracker.kps_tracker, i)
 
         duration = time.time() - time_start
         durations.append(duration)

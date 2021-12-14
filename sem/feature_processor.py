@@ -9,35 +9,20 @@ import sem.bbox_residual
 
 import g2o
 
-class EKFObjectFeature():
-    def __init__(self): 
-        self.sigma = np.eye(6)
-
-    def obtain_kalman_gain(self, Nt, Ht, V):
-        IV = np.kron(np.eye(Nt), V)
-        Kt = self.sigma @ Ht.T @ np.linalg.inv(Ht @ self.sigma @ Ht.T + IV)
-        self.Kt = Kt
-
-    def perform_update(self, residual, Ht, V, wTc):
-        Nt = np.shape(residual)[0]
-        self.obtain_kalman_gain(Nt, Ht, V)
-        delta_se3 = (self.Kt @ residual).T 
-        delta_T = sem.se3.axangle2pose(delta_se3)
-        delta_T = np.squeeze(delta_T)
-
-        wTc_new = delta_T @ wTc
-        self.sigma = (np.eye(6) - self.Kt @ Ht) @ self.sigma
-        return wTc_new
-
 class ObjectFeatProcessor: 
-    def __init__(self): 
+    def __init__(self, dataset_cam): 
         # for object features
         # <FeatureID, Feature>
         self.map_server = OrderedDict()
         # we need a dictionary to store a window of camera poses
         self.cam_states = OrderedDict()
 
-        self.ekf = EKFObjectFeature()
+        K = np.eye(3)
+        K[0, 0] = dataset_cam.fx
+        K[1, 1] = dataset_cam.fy
+        K[0, 2] = dataset_cam.cx
+        K[1, 2] = dataset_cam.cy
+        self.K = K 
 
     def add_cam_poses(self, pose_g2o, img_id): 
         pose = sem.se3.SE3(pose_g2o.orientation().matrix(), pose_g2o.position())
@@ -74,13 +59,11 @@ class ObjectFeatProcessor:
                 object_feat_max_jacobian_size += (2 * sem.myobject.NUM_KEYPOINTS + 4 * 1) \
                                 * len(object_feature.feature_msg['img_id'])
 
-        if object_feat_ids_to_remove:
-            # only update the latest camera pose
-            cam_states = OrderedDict()
-            temp_state = next(reversed(self.cam_states.items()))
-            cam_states[temp_state[0]] = temp_state[1]
+        if not object_feat_ids_to_remove: 
+            return  
 
-            H_object = np.zeros((object_feat_max_jacobian_size, 6*len(cam_states)))
+        if object_feat_ids_to_remove:
+            H_object = np.zeros((object_feat_max_jacobian_size, 6*len(self.cam_states)))
             r_object = np.zeros((object_feat_max_jacobian_size, 1))
             R_object = np.identity(len(H_object))
             stack_count = 0
@@ -88,7 +71,7 @@ class ObjectFeatProcessor:
             for feat_id in object_feat_ids_to_remove:
                 object_feature = self.map_server[feat_id]
                 success_flag, H_o_j, r_o_j, R_o_j = get_all_object_feat_JrR_per_frame(object_feature, 
-                    cam_states, self.K)
+                    self.cam_states, self.K)
                 if not success_flag: 
                     continue 
 
@@ -98,16 +81,25 @@ class ObjectFeatProcessor:
                 R_object[stack_count:stack_count + jacobian_size, stack_count:stack_count + jacobian_size] = R_o_j
                 stack_count += jacobian_size
 
+            if stack_count == 0: 
+                return  
+
             H_object = H_object[:stack_count, :]
             r_object = r_object[:stack_count, :]
             R_object = R_object[:stack_count, :stack_count]
 
-            wTc = next(reversed(self.cam_states.items())).matrix()
-            wTc_new = self.ekf.perform_update(self, r_object, H_object, R_object, wTc)
-            temp_state = next(reversed(self.cam_states.items()))
-            self.cam_states[temp_state[0]] = sem.se3.SE3(wTc_new[:3, :3], wTc_new[3, :3])
+        # Decompose the final Jacobian matrix to reduce computational
+        # complexity as in Equation (28), (29). in original msckf paper
+        H, r, R = decompose_qr(H_object, r_object, R_object)
 
-            return g2o.Isometry3d(wTc_new[:3, :3], wTc_new[3, :3])
+        # Calculate Kalman gain and delta X
+        P = np.eye(H.shape[1])
+        K, deltaX = compute_delta_state(H, P, R, r)
+        increment_cam_state(self.cam_states, deltaX)
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+utility functions
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 def huber_cost(residual, huber_epsilon = np.inf):
 
@@ -359,6 +351,9 @@ def get_all_object_feat_JrR_per_frame(object_feature, cam_states, K):
         H_x[:, frame_id * 6 : (frame_id + 1) * 6] = J_obj_wrt_cam[i, :, :]
         H_x_i = np.concatenate((H_x_i, H_x))
 
+    if H_x_i.shape[0] == 0: 
+        return False, None, None, None
+
     # jacobian wrt object state
     H_obj_i_feat = lm.jacobianFeatureQuadric(
         object_feature.feature_msg['zs'], object_feature.oTw,
@@ -381,3 +376,62 @@ def get_all_object_feat_JrR_per_frame(object_feature, cam_states, K):
     success_flag, H_o_j, r_o_j, R_o_j = nullspace_proj(H_obj_i, H_x_i, err_obj_i, R_i)
 
     return success_flag, H_o_j, r_o_j, R_o_j
+
+def decompose_qr(H, r, R):
+    """
+    Decompose the final Jacobian matrix to reduce computational
+    complexity as in Equation (28), (29). in original msckf paper
+    :param H: size nxm, jacobian matrix
+    :param r: size nx1, residual vector
+    :param R: size nxn, covariance matrix
+    :return: H, r, R after QR decomposition
+    """
+    # Return if H_x is a fat matrix (there is no need to compress in this case)
+    if H.shape[0] > H.shape[1]:
+        # QR decomposition
+        # if M > N, return (M, N), (N, N)
+        Qs, Rs = np.linalg.qr(H, mode='reduced')
+        # shape (N, N)
+        H_thin = Rs
+        # shape (N,)
+        r_thin = Qs.T @ r
+        R_thin = Qs.T @ R @ Qs
+    else:
+        # shape (M, N)
+        H_thin = H
+        # shape (M)
+        r_thin = r
+        R_thin = R
+    return H_thin, r_thin, R_thin
+
+def kf_gain(P, H, R):
+    '''
+    compute kalman gain for update
+    K = P H.T inv(HPH.T+R)
+    '''
+    return np.linalg.lstsq(H @ P @ H.T + R, H @ P, rcond=None)[0].T
+
+def compute_delta_state(H_ekf, P_ekf, R_ekf, r_ekf):
+    """
+    calculate kalman gain and correction
+    """
+    # shape (N, K)
+    K_ekf = kf_gain(P_ekf, H_ekf, R_ekf)
+    # State correction
+    # ref eq. 35 in orcvio paper
+    deltaX_ekf = -K_ekf @ r_ekf
+    return K_ekf, deltaX_ekf
+
+def increment_cam_state(cam_states, delta):
+    """
+    update camera states based on a correction delta
+    :param cam_states: camera states
+    :param delta: EKF correction
+    """
+    if np.linalg.norm(delta) < 1e-5:
+        return 
+    dT = sem.se3.axangle2pose(delta.reshape((-1,6)))
+    for i, cam_id in enumerate(cam_states.keys()): 
+        # use left perturbation
+        cam_states[cam_id].t = dT[i,:3,:3] @ cam_states[cam_id].t + dT[i,:3,3]
+        cam_states[cam_id].R = dT[i,:3,:3] @ cam_states[cam_id].R 
